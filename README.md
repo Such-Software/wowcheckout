@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="ui/public/logo.png" width="120" alt="XMR Checkout logo" />
+  <img src="ui/public/logo.png" width="120" alt="WOW Checkout logo" />
 </p>
 
 # wowcheckout
 
-Non-custodial Wownero checkout software for merchants. Payments go directly from the customer to the merchant wallet.
+A fork of [xmrcheckout](https://github.com/xmrcheckout/xmrcheckout) adapted for Wownero. Non-custodial Wownero checkout software for merchants. Payments go directly from the customer to the merchant wallet.
 
 wowcheckout is open source and self-hostable. It creates invoices, shows payment instructions, and watches the chain for incoming payments using view-only wallet access (address + secret view key). It can also notify your systems via API and webhooks.
 
@@ -54,6 +54,29 @@ Not included (by design):
 - You keep spend authority. The maximum permission level wowcheckout uses is view-only wallet access (wallet address + private view key).
 - If any configuration or integration implies spend authority, treat it as a misconfiguration and stop.
 
+## Pricing
+
+WOW/USD rates are derived in two steps:
+
+1. **WOW-BTC** price from [Nonlogs](https://api.nonlogs.io/api/markets)
+2. **BTC/USD** price from [Kraken](https://api.kraken.com/0/public/Ticker?pair=XXBTZUSD)
+
+The final rate is `WOW-BTC × BTC/USD`. Both values are cached briefly (60s for WOW-BTC, 30s for BTC/USD) to avoid excessive API calls.
+
+## Differences from xmrcheckout
+
+The file and folder structure is kept identical to xmrcheckout to make upstream syncing easy. Key content differences:
+
+- `api/app/rates.py` — Nonlogs WOW-BTC + Kraken BTC/USD instead of Kraken XMR/USD
+- `api/app/subaddress_derivation.py` — Wownero network byte overrides (mainnet=53, subaddress=63, integrated=54)
+- `api/app/qr_codes.py` — `wownero:` URI scheme
+- `docker/monero/Dockerfile` — Downloads Wownero binaries from Codeberg
+- `docker-compose.yml` — `wownero-wallet-rpc` commands, port 34568, Wownero daemon URL
+
+## Deployment
+
+The default Docker Compose config exposes nginx on **port 8180** on the host. If you run wowcheckout alongside xmrcheckout on the same server, there is no port conflict — each app has its own Docker network with separate nginx, API, and database containers bound to different host ports (xmrcheckout on 8080, wowcheckout on 8180).
+
 ## Repository layout
 
 - `ui/`: web UI
@@ -91,10 +114,10 @@ Post-login UI:
 
 ```
 docker build -t wowcheckout-home .
-docker run --rm -p 8080:80 wowcheckout-home
+docker run --rm -p 8180:80 wowcheckout-home
 ```
 
-Open `http://localhost:8080`.
+Open `http://localhost:8180`.
 
 ### Full stack (Docker Compose)
 
