@@ -1,0 +1,294 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+import { LoginTrigger } from "../../components/login-modal";
+
+export const metadata: Metadata = {
+  title: "Home",
+};
+
+export default function MarketingHomePage() {
+  return (
+    <main className="text-ink">
+      <section className="relative overflow-hidden px-[6vw] pb-16 pt-10 sm:pb-20">
+        <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid max-w-[38rem] gap-6 animate-[rise_0.9s_ease_both]">
+            <h1 className="font-serif text-[clamp(2.6rem,2.2rem+2.3vw,4.3rem)] leading-[1.02]">
+              Accept Wownero payments. Funds go straight to your wallet.
+            </h1>
+            <p className="text-[1.08rem] leading-relaxed text-ink-soft">
+              Create invoices and detect on-chain payments using your primary address + secret view key.
+              Get a clear status as payments are seen and confirmed.
+            </p>
+            <ul className="grid gap-3 text-sm text-ink-soft">
+              <li className="flex items-start gap-3">
+                <span className="mt-1.5 h-2 w-2 rounded-full bg-wownero"></span>
+                <span>
+                  View-only access: we can only detect incoming payments.
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-1.5 h-2 w-2 rounded-full bg-wownero"></span>
+                <span>
+                  No account or email: your primary address is the identifier.
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-1.5 h-2 w-2 rounded-full bg-wownero"></span>
+                <span>BTCPay-compatible invoice endpoints for existing integrations.</span>
+              </li>
+            </ul>
+            <div className="grid gap-2">
+              <p className="inline-flex w-fit items-center rounded-full bg-wownero px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-ink shadow-[0_12px_24px_rgba(242,104,34,0.25)]">
+                Non-custodial · view-only access
+              </p>
+              <p className="text-sm text-ink-soft">
+                We can’t spend from your wallet. Payments go straight to your wallet.
+              </p>
+            </div>
+            <p className="text-sm font-semibold text-ink-soft">
+              Open source. Self-hostable.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Link
+                className="inline-flex w-full items-center justify-center rounded-full bg-ink px-8 py-4 text-base font-semibold text-cream shadow-[0_18px_34px_rgba(16,18,23,0.2)] transition hover:-translate-y-0.5 sm:w-auto"
+                href="/login"
+              >
+                Log in
+              </Link>
+              <Link
+                className="inline-flex w-full items-center justify-center rounded-full border border-stroke bg-white/60 px-6 py-3 text-sm font-semibold text-ink transition hover:-translate-y-0.5 sm:w-auto"
+                href="/docs"
+              >
+                View documentation
+              </Link>
+              <Link
+                className="inline-flex w-full items-center justify-center rounded-full border border-stroke bg-white/60 px-6 py-3 text-sm font-semibold text-ink transition hover:-translate-y-0.5 sm:w-auto"
+                href="https://github.com/wowcheckout/wowcheckout#self-hosted-deployment-docker-compose"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Self-host
+              </Link>
+            </div>
+            <p className="text-sm text-ink-soft">
+              Prefer to look around first?{" "}
+              <Link className="font-semibold text-ink underline underline-offset-4" href="/tour">
+                Take the tour
+              </Link>{" "}
+              (simulated, no login).
+            </p>
+          </div>
+          <div className="relative grid gap-4">
+            <div className="absolute -left-6 top-4 hidden h-[calc(100%-2rem)] w-px bg-gradient-to-b from-wownero/0 via-wownero/60 to-wownero/0 lg:block"></div>
+            <div className="rounded-3xl border border-stroke bg-card p-7 shadow-card backdrop-blur animate-[rise_1s_ease_both] [animation-delay:150ms]">
+              <div className="flex items-center justify-between">
+                <span className="rounded-full bg-wownero/15 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-wownero">
+                  Detection
+                </span>
+                <span className="text-sm font-semibold text-sage">
+                  View-only
+                </span>
+              </div>
+              <div className="mt-6 grid gap-4">
+                <p className="text-2xl font-semibold">
+                  Detection timeline
+                </p>
+                <div className="relative grid gap-3 pl-6 text-sm text-ink-soft">
+                  <span className="timeline-rail" aria-hidden="true"></span>
+                  <span className="timeline-scan" aria-hidden="true"></span>
+                  <div className="flex items-center gap-3">
+                    <span className="timeline-dot is-active h-2.5 w-2.5 rounded-full bg-wownero"></span>
+                    <span className="font-semibold text-ink">
+                      Detected
+                    </span>
+                    <span className="text-ink-soft">Seen on the network (unconfirmed)</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="h-2.5 w-2.5 rounded-full bg-wownero/60"></span>
+                    <span className="font-semibold text-ink">
+                      Confirming
+                    </span>
+                    <span className="text-ink-soft">
+                      Waiting for confirmations
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="h-2.5 w-2.5 rounded-full bg-ink/20"></span>
+                    <span className="font-semibold text-ink">
+                      Confirmed
+                    </span>
+                    <span className="text-ink-soft">Target reached</span>
+                  </div>
+                </div>
+                <p className="text-sm text-ink-soft">
+                  First seen on-chain, then confirmed when it reaches your target.
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4">
+              <div className="rounded-2xl border border-stroke bg-white/70 p-4 shadow-soft backdrop-blur animate-[rise_0.9s_ease_both] [animation-delay:260ms] sm:p-5">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-ink-soft sm:text-[0.75rem]">
+                  View-only
+                </p>
+                <h3 className="mt-2 font-serif text-base sm:text-xl">
+                  Watch-only by design.
+                </h3>
+                <p className="mt-2 text-xs text-ink-soft sm:text-sm">
+                  View key access lets us detect payments - nothing more.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-stroke bg-white/70 p-4 shadow-soft backdrop-blur animate-[rise_0.9s_ease_both] [animation-delay:320ms] sm:p-5">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-ink-soft sm:text-[0.75rem]">
+                  Relay
+                </p>
+                <h3 className="mt-2 font-serif text-base sm:text-xl">
+                  Status updates via API + webhooks.
+                </h3>
+                <p className="mt-2 text-xs text-ink-soft sm:text-sm">
+                  Keep your systems updated without handing over control.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="how" className="px-[6vw] py-16">
+        <div className="mb-10 grid gap-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-wownero">
+            When someone pays
+          </p>
+          <h2 className="font-serif text-3xl">
+            What happens, step by step.
+          </h2>
+          <p className="text-ink-soft">
+            You stay in control of the wallet. This just detects and reports what is on-chain.
+          </p>
+        </div>
+        <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-stroke bg-white/70 p-6 shadow-soft backdrop-blur animate-[rise_0.9s_ease_both]">
+            <span className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-wownero/15 text-sm font-semibold text-wownero">
+              01
+            </span>
+            <h3 className="mb-2 font-serif text-xl">
+              Connect with a view key
+            </h3>
+            <p className="text-ink-soft">
+              Use your primary address and secret view key. No spend keys.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-stroke bg-white/70 p-6 shadow-soft backdrop-blur animate-[rise_0.9s_ease_both] [animation-delay:100ms]">
+            <span className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-wownero/15 text-sm font-semibold text-wownero">
+              02
+            </span>
+            <h3 className="mb-2 font-serif text-xl">Create an invoice</h3>
+            <p className="text-ink-soft">
+              A unique subaddress is generated per invoice.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-stroke bg-white/70 p-6 shadow-soft backdrop-blur animate-[rise_0.9s_ease_both] [animation-delay:200ms]">
+            <span className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-wownero/15 text-sm font-semibold text-wownero">
+              03
+            </span>
+            <h3 className="mb-2 font-serif text-xl">Wait for payment</h3>
+            <p className="text-ink-soft">
+              We watch the chain (view-only) for incoming payments.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-stroke bg-white/70 p-6 shadow-soft backdrop-blur animate-[rise_0.9s_ease_both] [animation-delay:300ms]">
+            <span className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-wownero/15 text-sm font-semibold text-wownero">
+              04
+            </span>
+            <h3 className="mb-2 font-serif text-xl">Send status updates</h3>
+            <p className="text-ink-soft">
+              Webhooks fire when a payment is detected and when it reaches your confirmation target.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="trust" className="px-[6vw] py-16">
+        <div className="mb-10 grid gap-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-wownero">
+            Trust
+          </p>
+          <h2 className="font-serif text-3xl">
+            What we can (and can’t) do.
+          </h2>
+        </div>
+        <div className="grid gap-7 lg:grid-cols-3">
+          <div className="rounded-2xl border border-stroke bg-white/70 p-6 shadow-soft backdrop-blur animate-[rise_0.9s_ease_both] lg:col-span-2">
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <h3 className="mb-2 font-serif text-xl">What we do</h3>
+                <ul className="grid gap-2 text-sm text-ink-soft">
+                  <li>Create invoices and generate subaddresses.</li>
+                  <li>Detect on-chain payments with view-only keys.</li>
+                  <li>Send status updates via API and webhooks.</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="mb-2 font-serif text-xl">What we never do</h3>
+                <ul className="grid gap-2 text-sm text-ink-soft">
+                  <li>Never request spend keys or signing access.</li>
+                  <li>Never move, pool, or intermediate funds.</li>
+                  <li>Never touch bank accounts or fiat rails.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-7">
+            <div className="rounded-2xl border border-stroke bg-white/70 p-6 shadow-soft backdrop-blur animate-[rise_0.9s_ease_both] [animation-delay:100ms]">
+              <h3 className="mb-2 font-serif text-xl">View-only boundary</h3>
+              <p className="text-ink-soft">
+                We only ask for a secret view key. That lets us detect payments - nothing more.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-stroke bg-white/70 p-6 shadow-soft backdrop-blur animate-[rise_0.9s_ease_both] [animation-delay:200ms]">
+              <h3 className="mb-2 font-serif text-xl">Safe on failure</h3>
+              <p className="text-ink-soft">
+                If the service is unavailable, funds remain safe and payments stay valid on-chain.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="cta" className="px-[6vw] pb-24 pt-10">
+        <div className="relative grid gap-5 overflow-hidden rounded-3xl bg-ink p-10 text-cream shadow-deep">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(242,104,34,0.5),transparent_70%)] blur-2xl"></div>
+            <div className="absolute bottom-[-120px] left-[-40px] h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(93,122,106,0.4),transparent_70%)] blur-2xl"></div>
+          </div>
+          <h2 className="font-serif text-3xl">
+            Ready to try it?
+          </h2>
+          <p className="text-cream/80">
+            Log in to create an invoice, or read the docs to integrate via API and webhooks.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <LoginTrigger
+              className="inline-flex items-center justify-center rounded-full border border-cream/40 px-6 py-3 text-sm font-semibold text-cream transition hover:-translate-y-0.5"
+            >
+              Log in
+            </LoginTrigger>
+            <Link
+              className="inline-flex items-center justify-center rounded-full border border-cream/40 px-6 py-3 text-sm font-semibold text-cream transition hover:-translate-y-0.5"
+              href="/docs"
+            >
+              Read the docs
+            </Link>
+          </div>
+          <p className="text-sm text-cream/70">
+            Want to preview the dashboard first?{" "}
+            <Link className="font-semibold text-cream underline underline-offset-4" href="/tour">
+              Take the tour
+            </Link>{" "}
+            (simulated).
+          </p>
+        </div>
+      </section>
+    </main>
+  );
+}
