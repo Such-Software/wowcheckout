@@ -40,7 +40,7 @@
     overlay.style.display = "none";
     overlay.style.alignItems = "center";
     overlay.style.justifyContent = "center";
-    overlay.style.background = "rgba(16, 18, 23, 0.6)";
+    overlay.style.background = "rgba(26, 16, 32, 0.6)";
     overlay.style.zIndex = "2147483647";
     overlay.style.padding = "24px";
 
@@ -50,7 +50,7 @@
     container.style.height = "min(86vh, 720px)";
     container.style.background = "#f8f2e9";
     container.style.borderRadius = "20px";
-    container.style.boxShadow = "0 24px 50px rgba(16, 18, 23, 0.35)";
+    container.style.boxShadow = "0 24px 50px rgba(26, 16, 32, 0.35)";
     container.style.overflow = "hidden";
 
     var iframe = document.createElement("iframe");

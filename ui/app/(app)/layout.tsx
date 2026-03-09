@@ -45,9 +45,17 @@ export default function AppLayout({
         <div className="site-footer-copy">
           <p>wowcheckout.com - Non-custodial Wownero checkout software.</p>
           <p>
+            Hosted by{" "}
             <Link
               className="underline underline-offset-4"
-              href="https://github.com/wowcheckout/wowcheckout"
+              href="https://such.software"
+            >
+              Such Software
+            </Link>
+            {" · "}
+            <Link
+              className="underline underline-offset-4"
+              href="https://github.com/Such-Software/wowcheckout"
             >
               GitHub
             </Link>

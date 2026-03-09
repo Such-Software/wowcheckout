@@ -206,7 +206,7 @@ const faqItems: FaqItem[] = [
           official{" "}
           <Link
             className="underline underline-offset-4"
-            href="https://github.com/wowcheckout/wowcheckout"
+            href="https://github.com/Such-Software/wowcheckout"
           >
             GitHub repository
           </Link>

@@ -64,7 +64,7 @@ export default function MarketingHomePage() {
               </Link>
               <Link
                 className="inline-flex w-full items-center justify-center rounded-full border border-stroke bg-white/60 px-6 py-3 text-sm font-semibold text-ink transition hover:-translate-y-0.5 sm:w-auto"
-                href="https://github.com/wowcheckout/wowcheckout#self-hosted-deployment-docker-compose"
+                href="https://github.com/Such-Software/wowcheckout#self-hosted-deployment-docker-compose"
                 target="_blank"
                 rel="noreferrer"
               >
