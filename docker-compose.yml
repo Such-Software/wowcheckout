@@ -3,10 +3,9 @@ services:
     build:
       context: ./nginx
     ports:
-      - "8180:80"
+      - "${NGINX_BIND:-0.0.0.0}:${NGINX_PORT:-8180}:80"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/certs:/etc/nginx/certs
       - ./qr:/qr:ro
     depends_on:
       ui:
