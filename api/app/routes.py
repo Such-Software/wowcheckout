@@ -28,7 +28,6 @@ from .config import (
 from .db import get_db
 from .formatting import format_xmr_amount
 from .models import Invoice, ProfileHistory, User, Webhook, WebhookDelivery
-from monero.address import Address, IntegratedAddress, SubAddress
 from .rates import get_wow_rate
 from .subaddress_allocator import MAX_SUBADDRESS_INDEX, create_subaddress_for_user
 from .schemas import (
@@ -358,28 +357,63 @@ def _resolve_invoice_amount(
 
 
 def _validate_payment_address_and_view_key(payment_address: str, view_key: str) -> None:
+    """Validate a Wownero primary address and its secret view key.
+
+    Wownero uses 2-byte varint prefixes (unlike Monero's 1-byte), so the
+    standard monero Python library cannot parse them correctly.  We do
+    base58-decode + keccak checksum + ed25519 view-key verification here.
+    """
+    from binascii import hexlify, unhexlify
+    from monero import base58, ed25519
+    from monero.keccak import keccak_256
+
+    # Wownero base58 prefix varints (first decoded byte)
+    _WOW_PRIMARY_BYTE0 = 178   # base58 prefix 4146  -> "Wo"
+    _WOW_SUBADDR_BYTE0 = 176   # base58 prefix 12208 -> "Ww"
+    _WOW_INTEGRATED_BYTE0 = 179  # base58 prefix 4147
+
     try:
-        address = Address(payment_address)
-    except ValueError as exc:
-        try:
-            SubAddress(payment_address)
-        except ValueError:
-            try:
-                IntegratedAddress(payment_address)
-            except ValueError:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Primary address is invalid",
-                ) from exc
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Integrated addresses are not supported. Use the primary address.",
-            ) from exc
+        decoded = bytearray(unhexlify(base58.decode(payment_address)))
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Primary address is invalid",
+        )
+
+    # Verify keccak-256 checksum (last 4 bytes)
+    if decoded[-4:] != keccak_256(decoded[:-4]).digest()[:4]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Primary address is invalid",
+        )
+
+    first_byte = decoded[0]
+    if first_byte == _WOW_SUBADDR_BYTE0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Subaddresses are not supported. Use the primary address.",
-        ) from exc
-    if not address.check_private_view_key(view_key):
+        )
+    if first_byte == _WOW_INTEGRATED_BYTE0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Integrated addresses are not supported. Use the primary address.",
+        )
+    if first_byte != _WOW_PRIMARY_BYTE0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Primary address is invalid",
+        )
+
+    # Wownero has 2-byte varint prefix -> keys start at offset 2
+    pub_spend = decoded[2:34]
+    pub_view = decoded[34:66]
+
+    # Derive public view key from the secret view key and compare
+    try:
+        derived_pub_view = ed25519.public_from_secret_hex(view_key)
+        if unhexlify(derived_pub_view) != bytes(pub_view):
+            raise ValueError("mismatch")
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Secret view key does not match the primary address",
