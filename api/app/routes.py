@@ -22,13 +22,15 @@ from .config import (
     FOUNDER_PAYMENT_ADDRESS,
     FOUNDER_VIEW_KEY,
     INVOICE_DEFAULT_EXPIRY_HOURS,
+    INVOICE_RECONCILE_INTERVAL_SECONDS,
     OPEN_REGISTRATION,
     QR_STORAGE_DIR,
 )
 from .db import get_db
 from .formatting import format_xmr_amount
-from .models import Invoice, ProfileHistory, User, Webhook, WebhookDelivery
-from .rates import get_wow_rate
+from .models import Invoice, ProfileHistory, SystemStatus, User, Webhook, WebhookDelivery
+from monero.address import Address, IntegratedAddress, SubAddress
+from .rates import get_xmr_rate
 from .subaddress_allocator import MAX_SUBADDRESS_INDEX, create_subaddress_for_user
 from .schemas import (
     ApiCredentialsResetRequest,
@@ -42,6 +44,7 @@ from .schemas import (
     LoginResponse,
     ProfileResponse,
     ProfileUpdate,
+    SystemStatusResponse,
     WebhookCreate,
     WebhookDeliveryResponse,
     WebhookResponse,
@@ -58,7 +61,6 @@ from .security import (
 )
 from .webhooks import build_webhook_payload, dispatch_webhooks
 from .qr_codes import ensure_invoice_qr_png, invoice_qr_url, resolve_qr_settings
-
 router = APIRouter()
 
 WEBHOOK_EVENTS = (
@@ -77,10 +79,55 @@ def _require_donations_enabled() -> None:
 )
 
 MAX_QR_LOGO_DATA_URL_LENGTH = 120_000
+MONERO_CONNECTIVITY_STATUS_NAME = "monero_connectivity"
 
 
 def _get_user_for_api_key(db: Session, api_key: str) -> User | None:
     return db.query(User).filter(User.api_key_hash == hash_api_key(api_key)).first()
+
+
+def _status_response_from_rows(
+    monero_status: SystemStatus | None,
+    reconciler_status: SystemStatus | None,
+) -> SystemStatusResponse:
+    wallet_rpc = (
+        str(monero_status.wallet_rpc)
+        if monero_status and monero_status.wallet_rpc
+        else "unreachable"
+    )
+    daemon = (
+        str(monero_status.daemon)
+        if monero_status and monero_status.daemon
+        else "unknown"
+    )
+    daemon_height = monero_status.daemon_height if monero_status else None
+    return SystemStatusResponse(
+        wallet_rpc=wallet_rpc,
+        daemon=daemon,
+        daemon_height=daemon_height,
+        invoice_reconcile_interval_seconds=INVOICE_RECONCILE_INTERVAL_SECONDS,
+        last_reconcile_started_at=(
+            reconciler_status.last_reconcile_started_at if reconciler_status else None
+        ),
+        last_reconcile_completed_at=(
+            reconciler_status.last_reconcile_completed_at if reconciler_status else None
+        ),
+        last_reconcile_error=(
+            reconciler_status.last_reconcile_error if reconciler_status else None
+        ),
+    )
+
+
+def _load_public_system_status(db: Session) -> SystemStatusResponse:
+    reconciler_status = (
+        db.query(SystemStatus).filter(SystemStatus.name == "reconciler").first()
+    )
+    monero_status = (
+        db.query(SystemStatus)
+        .filter(SystemStatus.name == MONERO_CONNECTIVITY_STATUS_NAME)
+        .first()
+    )
+    return _status_response_from_rows(monero_status, reconciler_status)
 
 
 def _get_founder_user(db: Session) -> User:
@@ -331,7 +378,7 @@ def _resolve_invoice_amount(
             detail="currency is required when amount_fiat is provided",
         )
     try:
-        quote = get_wow_rate(requested_currency)
+        quote = get_xmr_rate(requested_currency)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -345,7 +392,6 @@ def _resolve_invoice_amount(
     # Round UP to 3 decimal places so we never undercharge.
     # 3 decimals = 0.001 WOW — more than enough precision for Wownero.
     # See also: btcpay_routes.py for the same rounding.
-    # To change precision: adjust the Decimal quantize string here and in btcpay_routes.py.
     amount_xmr = (Decimal(requested_amount_fiat) / quote.rate).quantize(
         Decimal("0.001"), rounding=ROUND_UP
     )
@@ -361,63 +407,28 @@ def _resolve_invoice_amount(
 
 
 def _validate_payment_address_and_view_key(payment_address: str, view_key: str) -> None:
-    """Validate a Wownero primary address and its secret view key.
-
-    Wownero uses 2-byte varint prefixes (unlike Monero's 1-byte), so the
-    standard monero Python library cannot parse them correctly.  We do
-    base58-decode + keccak checksum + ed25519 view-key verification here.
-    """
-    from binascii import hexlify, unhexlify
-    from monero import base58, ed25519
-    from monero.keccak import keccak_256
-
-    # Wownero base58 prefix varints (first decoded byte)
-    _WOW_PRIMARY_BYTE0 = 178   # base58 prefix 4146  -> "Wo"
-    _WOW_SUBADDR_BYTE0 = 176   # base58 prefix 12208 -> "Ww"
-    _WOW_INTEGRATED_BYTE0 = 179  # base58 prefix 4147
-
     try:
-        decoded = bytearray(unhexlify(base58.decode(payment_address)))
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Primary address is invalid",
-        )
-
-    # Verify keccak-256 checksum (last 4 bytes)
-    if decoded[-4:] != keccak_256(decoded[:-4]).digest()[:4]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Primary address is invalid",
-        )
-
-    first_byte = decoded[0]
-    if first_byte == _WOW_SUBADDR_BYTE0:
+        address = Address(payment_address)
+    except ValueError as exc:
+        try:
+            SubAddress(payment_address)
+        except ValueError:
+            try:
+                IntegratedAddress(payment_address)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Primary address is invalid",
+                ) from exc
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Integrated addresses are not supported. Use the primary address.",
+            ) from exc
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Subaddresses are not supported. Use the primary address.",
-        )
-    if first_byte == _WOW_INTEGRATED_BYTE0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Integrated addresses are not supported. Use the primary address.",
-        )
-    if first_byte != _WOW_PRIMARY_BYTE0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Primary address is invalid",
-        )
-
-    # Wownero has 2-byte varint prefix -> keys start at offset 2
-    pub_spend = decoded[2:34]
-    pub_view = decoded[34:66]
-
-    # Derive public view key from the secret view key and compare
-    try:
-        derived_pub_view = ed25519.public_from_secret_hex(view_key)
-        if unhexlify(derived_pub_view) != bytes(pub_view):
-            raise ValueError("mismatch")
-    except Exception:
+        ) from exc
+    if not address.check_private_view_key(view_key):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Secret view key does not match the primary address",
@@ -573,6 +584,11 @@ def get_donation_status(
     except HTTPException:
         pass
     return _public_invoice_status_response(db, invoice, request)
+
+
+@router.get("/api/core/public/system/status", response_model=SystemStatusResponse)
+def get_public_system_status(db: Session = Depends(get_db)):
+    return _load_public_system_status(db)
 
 
 @router.post("/api/core/webhooks", response_model=WebhookResponse)

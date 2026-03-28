@@ -11,7 +11,7 @@ from .admin_routes import router as admin_router
 from .btcpay_routes import router as btcpay_router
 from .routes import router
 
-app = FastAPI(title="wowcheckout.com API", version="0.1.0")
+app = FastAPI(title="xmrcheckout.com API", version="0.1.0")
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
 
@@ -196,7 +196,7 @@ def startup():
             connection.execute(
                 text(
                     "ALTER TABLE users "
-                    "ADD COLUMN IF NOT EXISTS default_qr_logo VARCHAR DEFAULT 'wownero'"
+                    "ADD COLUMN IF NOT EXISTS default_qr_logo VARCHAR DEFAULT 'monero'"
                 )
             )
             connection.execute(
@@ -248,12 +248,87 @@ def startup():
             )
             connection.execute(
                 text(
-                    "UPDATE users SET default_qr_logo = 'wownero' "
+                    "UPDATE users SET default_qr_logo = 'monero' "
                     "WHERE default_qr_logo IS NULL"
                 )
             )
             connection.execute(
                 text("CREATE INDEX IF NOT EXISTS ix_users_payment_address ON users (payment_address)")
+            )
+            connection.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS system_status ("
+                    "name VARCHAR PRIMARY KEY, "
+                    "last_reconcile_started_at TIMESTAMP WITH TIME ZONE, "
+                    "last_reconcile_completed_at TIMESTAMP WITH TIME ZONE, "
+                    "last_reconcile_error VARCHAR, "
+                    "wallet_rpc VARCHAR, "
+                    "daemon VARCHAR, "
+                    "daemon_height INTEGER, "
+                    "checked_at TIMESTAMP WITH TIME ZONE, "
+                    "updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()"
+                    ")"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE system_status "
+                    "ADD COLUMN IF NOT EXISTS last_reconcile_started_at TIMESTAMP WITH TIME ZONE"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE system_status "
+                    "ADD COLUMN IF NOT EXISTS last_reconcile_completed_at TIMESTAMP WITH TIME ZONE"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE system_status "
+                    "ADD COLUMN IF NOT EXISTS last_reconcile_error VARCHAR"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE system_status "
+                    "ADD COLUMN IF NOT EXISTS wallet_rpc VARCHAR"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE system_status "
+                    "ADD COLUMN IF NOT EXISTS daemon VARCHAR"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE system_status "
+                    "ADD COLUMN IF NOT EXISTS daemon_height INTEGER"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE system_status "
+                    "ADD COLUMN IF NOT EXISTS checked_at TIMESTAMP WITH TIME ZONE"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE system_status "
+                    "ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()"
+                )
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO system_status (name) VALUES ('reconciler') "
+                    "ON CONFLICT (name) DO NOTHING"
+                )
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO system_status (name) VALUES ('monero_connectivity') "
+                    "ON CONFLICT (name) DO NOTHING"
+                )
             )
         finally:
             if lock_acquired:

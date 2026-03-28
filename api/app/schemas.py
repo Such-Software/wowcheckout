@@ -18,7 +18,7 @@ from .formatting import format_xmr_amount
 
 InvoiceStatus = Literal["pending", "payment_detected", "confirmed", "expired", "invalid"]
 BtcpayCheckoutStyle = Literal["standard", "btcpay_classic"]
-QrLogoMode = Literal["wownero", "none", "custom"]
+QrLogoMode = Literal["monero", "none", "custom"]
 
 
 class InvoiceCreate(BaseModel):
@@ -184,13 +184,23 @@ class InvoiceStatusResponse(BaseModel):
         return format_xmr_amount(value)
 
 
+class SystemStatusResponse(BaseModel):
+    wallet_rpc: Literal["ok", "unreachable"]
+    daemon: Literal["ok", "unreachable", "unknown"]
+    daemon_height: int | None = None
+    invoice_reconcile_interval_seconds: int
+    last_reconcile_started_at: datetime | None = None
+    last_reconcile_completed_at: datetime | None = None
+    last_reconcile_error: str | None = None
+
+
 class ProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     payment_address: str
     default_confirmation_target: conint(ge=0, le=10) = 1
-    default_qr_logo: QrLogoMode = "wownero"
+    default_qr_logo: QrLogoMode = "monero"
     default_qr_logo_data_url: str | None = None
     btcpay_checkout_style: BtcpayCheckoutStyle = "btcpay_classic"
     created_at: datetime
