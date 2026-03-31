@@ -30,7 +30,7 @@ from .db import get_db
 from .formatting import format_xmr_amount
 from .models import Invoice, ProfileHistory, SystemStatus, User, Webhook, WebhookDelivery
 from monero.address import Address, IntegratedAddress, SubAddress
-from .rates import get_xmr_rate
+from .rates import get_wow_rate
 from .subaddress_allocator import MAX_SUBADDRESS_INDEX, create_subaddress_for_user
 from .schemas import (
     ApiCredentialsResetRequest,
@@ -378,7 +378,7 @@ def _resolve_invoice_amount(
             detail="currency is required when amount_fiat is provided",
         )
     try:
-        quote = get_xmr_rate(requested_currency)
+        quote = get_wow_rate(requested_currency)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
