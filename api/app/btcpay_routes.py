@@ -198,8 +198,17 @@ def _after_expiration(invoice: Invoice) -> bool:
     return detected_at > expires_at
 
 
+# Wownero uses 11 decimal places (atomic unit = 10^-11 WOW), NOT 12 like
+# Monero. Forked from xmrcheckout and MUST be corrected wherever the constant
+# appears. Using 10^12 here broke payment detection — required_atomic came
+# out 10× larger than what wallet-rpc actually reports on the subaddress, so
+# is_paid never flipped and invoices stayed pending forever.
+WOW_ATOMIC_UNITS = Decimal("100000000000")  # 10^11
+WOW_ATOMIC_QUANTIZE = Decimal("0.00000000001")  # 11 decimal places
+
+
 def _xmr_to_atomic(amount: Decimal) -> int:
-    quantized = (Decimal(amount) * Decimal("1000000000000")).to_integral_value(
+    quantized = (Decimal(amount) * WOW_ATOMIC_UNITS).to_integral_value(
         rounding=ROUND_DOWN
     )
     return int(quantized)
@@ -218,15 +227,15 @@ def _btcpay_amount_currency(invoice: Invoice) -> tuple[str, str, dict[str, Any]]
 
 def _format_xmr_fixed(value: Decimal) -> str:
     """Format WOW amount with trailing zeros stripped."""
-    formatted = f"{value.quantize(Decimal('0.000000000001')):.12f}"
+    formatted = f"{value.quantize(WOW_ATOMIC_QUANTIZE):.11f}"
     if "." in formatted:
         formatted = formatted.rstrip("0").rstrip(".")
     return formatted
 
 
 def _atomic_to_xmr(value: int) -> Decimal:
-    return (Decimal(value) / Decimal("1000000000000")).quantize(
-        Decimal("0.000000000001"), rounding=ROUND_DOWN
+    return (Decimal(value) / WOW_ATOMIC_UNITS).quantize(
+        WOW_ATOMIC_QUANTIZE, rounding=ROUND_DOWN
     )
 
 

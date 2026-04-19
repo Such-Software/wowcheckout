@@ -417,8 +417,16 @@ def _safe_update_reconciler_status(
 
 
 
+# Wownero uses 11 decimal places (atomic unit = 10^-11 WOW), NOT 12 like
+# Monero. Using 10^12 here makes required_atomic 10× larger than actual paid
+# amount, so is_paid never becomes true and invoices stay pending forever
+# even after detection + confirmations. This entire codebase was forked from
+# xmrcheckout and the constant must be corrected wherever it appears.
+WOW_ATOMIC_UNITS = Decimal("100000000000")  # 10^11
+
+
 def _xmr_to_atomic(amount: Decimal) -> int:
-    quantized = (Decimal(amount) * Decimal("1000000000000")).to_integral_value(
+    quantized = (Decimal(amount) * WOW_ATOMIC_UNITS).to_integral_value(
         rounding=ROUND_DOWN
     )
     return int(quantized)

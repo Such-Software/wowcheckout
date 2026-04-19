@@ -302,8 +302,10 @@ def _public_invoice_status_response(
     metadata = invoice.metadata_json or {}
     update: dict[str, Any] = {}
     if invoice.total_paid_atomic is not None:
-        total_paid = (Decimal(invoice.total_paid_atomic) / Decimal("1000000000000")).quantize(
-            Decimal("0.000000000001"), rounding=ROUND_DOWN
+        # Wownero uses 11 decimal places (10^11), NOT 12 like Monero. Using
+        # 10^12 here under-reports amount_paid by a factor of 10.
+        total_paid = (Decimal(invoice.total_paid_atomic) / Decimal("100000000000")).quantize(
+            Decimal("0.00000000001"), rounding=ROUND_DOWN
         )
         update["amount_paid_xmr"] = format_xmr_amount(total_paid)
     btcpay_data = metadata.get("btcpay") if isinstance(metadata, dict) else None
