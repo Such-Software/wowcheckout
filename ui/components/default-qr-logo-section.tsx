@@ -10,7 +10,7 @@ import {
   type DefaultQrLogoState,
 } from "../app/(app)/dashboard/actions";
 
-const buildInitialState = (logo: "monero" | "none" | "custom", logoDataUrl: string | null) => ({
+const buildInitialState = (logo: "wownero" | "monero" | "none" | "custom", logoDataUrl: string | null) => ({
   logo,
   logoDataUrl,
   error: null,
@@ -21,11 +21,11 @@ export default function DefaultQrLogoSection({
   initialLogo,
   initialLogoDataUrl,
 }: {
-  initialLogo: "monero" | "none" | "custom";
+  initialLogo: "wownero" | "monero" | "none" | "custom";
   initialLogoDataUrl: string | null;
 }) {
   const router = useRouter();
-  const [logo, setLogo] = useState<"monero" | "none" | "custom">(initialLogo);
+  const [logo, setLogo] = useState<"wownero" | "monero" | "none" | "custom">(initialLogo);
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(initialLogoDataUrl);
   const [state, formAction] = useFormState(
     updateDefaultQrLogoAction,
