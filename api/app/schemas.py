@@ -18,7 +18,11 @@ from .formatting import format_xmr_amount
 
 InvoiceStatus = Literal["pending", "payment_detected", "confirmed", "expired", "invalid"]
 BtcpayCheckoutStyle = Literal["standard", "btcpay_classic"]
-QrLogoMode = Literal["monero", "none", "custom"]
+# "wownero" is the wowcheckout default; "monero" kept as an accepted
+# value for backward compat with any rows written before the
+# fork-rename. New rows are created with "wownero" (see models.py
+# server_default + main.py migration backfill).
+QrLogoMode = Literal["wownero", "monero", "none", "custom"]
 
 
 class InvoiceCreate(BaseModel):
@@ -200,7 +204,7 @@ class ProfileResponse(BaseModel):
     id: UUID
     payment_address: str
     default_confirmation_target: conint(ge=0, le=10) = 1
-    default_qr_logo: QrLogoMode = "monero"
+    default_qr_logo: QrLogoMode = "wownero"
     default_qr_logo_data_url: str | None = None
     btcpay_checkout_style: BtcpayCheckoutStyle = "btcpay_classic"
     created_at: datetime

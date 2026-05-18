@@ -196,7 +196,7 @@ def startup():
             connection.execute(
                 text(
                     "ALTER TABLE users "
-                    "ADD COLUMN IF NOT EXISTS default_qr_logo VARCHAR DEFAULT 'monero'"
+                    "ADD COLUMN IF NOT EXISTS default_qr_logo VARCHAR DEFAULT 'wownero'"
                 )
             )
             connection.execute(
@@ -248,7 +248,7 @@ def startup():
             )
             connection.execute(
                 text(
-                    "UPDATE users SET default_qr_logo = 'monero' "
+                    "UPDATE users SET default_qr_logo = 'wownero' "
                     "WHERE default_qr_logo IS NULL"
                 )
             )

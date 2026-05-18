@@ -70,7 +70,7 @@ type ProfileSummary = {
   id: string;
   payment_address: string;
   default_confirmation_target: number;
-  default_qr_logo: "monero" | "none" | "custom";
+  default_qr_logo: "wownero" | "monero" | "none" | "custom";
   default_qr_logo_data_url: string | null;
   btcpay_checkout_style?: "standard" | "btcpay_classic";
   created_at: string;
@@ -422,7 +422,7 @@ export default async function DashboardPage({
                     </div>
                     <div className="rounded-2xl border border-stroke bg-white/70 p-6 shadow-soft">
                       <DefaultQrLogoSection
-                        initialLogo={profileData?.default_qr_logo ?? "monero"}
+                        initialLogo={profileData?.default_qr_logo ?? "wownero"}
                         initialLogoDataUrl={profileData?.default_qr_logo_data_url ?? null}
                       />
                     </div>

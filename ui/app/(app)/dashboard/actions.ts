@@ -51,7 +51,7 @@ export type DefaultConfirmationTargetState = {
 };
 
 export type DefaultQrLogoState = {
-  logo: "monero" | "none" | "custom";
+  logo: "wownero" | "monero" | "none" | "custom";
   logoDataUrl: string | null;
   error: string | null;
   success: string | null;
@@ -274,6 +274,7 @@ export async function createInvoiceAction(
   const qrLogoDataUrl = String(formData.get("qr_logo_data_url") ?? "").trim();
   const qrLogoMode =
     qrLogoModeRaw === "account_default" ||
+    qrLogoModeRaw === "wownero" ||
     qrLogoModeRaw === "monero" ||
     qrLogoModeRaw === "none" ||
     qrLogoModeRaw === "custom"
@@ -540,7 +541,9 @@ export async function updateDefaultQrLogoAction(
   const logo = String(formData.get("default_qr_logo") ?? "").trim();
   const logoDataUrlRaw = String(formData.get("default_qr_logo_data_url") ?? "").trim();
   const normalizedLogo =
-    logo === "none" || logo === "custom" || logo === "monero" ? logo : null;
+    logo === "none" || logo === "custom" || logo === "wownero" || logo === "monero"
+      ? logo
+      : null;
   if (!normalizedLogo) {
     return {
       logo: _prevState.logo,
@@ -602,6 +605,7 @@ export async function updateDefaultQrLogoAction(
   const resolvedLogo =
     data.default_qr_logo === "none" ||
     data.default_qr_logo === "custom" ||
+    data.default_qr_logo === "wownero" ||
     data.default_qr_logo === "monero"
       ? data.default_qr_logo
       : normalizedLogo;
@@ -609,7 +613,7 @@ export async function updateDefaultQrLogoAction(
     resolvedLogo === "custom" ? data.default_qr_logo_data_url ?? logoDataUrl : null;
   revalidatePath("/dashboard");
   return {
-    logo: resolvedLogo as "monero" | "none" | "custom",
+    logo: resolvedLogo as "wownero" | "monero" | "none" | "custom",
     logoDataUrl: resolvedDataUrl ?? null,
     error: null,
     success: "QR default saved.",
