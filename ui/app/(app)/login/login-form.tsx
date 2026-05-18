@@ -13,12 +13,19 @@ const base58Pattern = /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvw
 const viewKeyPattern = /^[0-9a-fA-F]{64}$/;
 const validationDelayMs = 450;
 
+// Wownero primary addresses are 97 base58 chars starting with "Wo".
+// This guard was inherited from the xmrcheckout fork — XMR addresses
+// are 95 chars starting with "4". The xmrcheckout-shape check
+// silently rejected every Wownero address, leaving the Sign in
+// button greyed out and the validate API never called. Suchshop
+// avoided this because that tenant was provisioned via direct SQL,
+// not via this form.
 const isLikelyPrimaryAddress = (value: string) => {
   const trimmed = value.trim();
-  if (trimmed.length !== 95) {
+  if (trimmed.length !== 97) {
     return false;
   }
-  if (!trimmed.startsWith("4")) {
+  if (!trimmed.startsWith("Wo")) {
     return false;
   }
   return base58Pattern.test(trimmed);
