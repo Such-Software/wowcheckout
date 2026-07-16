@@ -145,9 +145,10 @@ cp .env.example .env
 - Wownero view-only wallet settings (`MONERO_WALLET_RPC_*`)
 - `MONERO_DAEMON_URL` (choose one of the options below)
 
-3. Choose a Wownero daemon source:
-- **Use an existing daemon (default):**
-  - Leave `MONERO_DAEMON_URL` as-is (the default points at a local Wownero daemon).
+3. Choose a Wownero daemon source. `MONERO_DAEMON_URL` is required and has no tracked deployment
+   default:
+- **Use an existing daemon:**
+  - Set `MONERO_DAEMON_URL` to an operator-controlled endpoint reachable by the wallet RPC containers.
 - **Run your own daemon via Docker Compose:**
   - Set `MONERO_DAEMON_URL=http://wownerod:34568`
   - Start the stack with the `local-daemon` profile (see step 5)
@@ -174,6 +175,12 @@ docker compose --profile local-daemon up --build -d
 ### Webhooks to external systems
 
 wowcheckout can send BTCPay-compatible webhooks when invoice status changes (e.g., payment confirmed on-chain). Configure webhooks per-merchant via the admin panel or merchant dashboard.
+
+Greenfield invoice requests may set `checkout.confirmationsRequired` from `0` through `10000`.
+The target is snapshotted on the invoice. Invoice responses and settlement webhooks include the
+required and observed confirmation counts, transaction IDs, observation time, and wallet-RPC source.
+Webhook registration also accepts an optional caller-generated `secret`; deliveries authenticate the
+exact request bytes with `BTCPay-Sig`.
 
 If the webhook target is on the same LAN and Docker containers cannot resolve its hostname (NAT hairpinning), add `extra_hosts` to the `reconciler` service in `docker-compose.yml`:
 
