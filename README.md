@@ -57,12 +57,18 @@ Not included (by design):
 
 ## Pricing
 
-WOW/USD rates are derived in two steps:
+WOW/USD rates use two independent paths:
 
-1. **WOW-BTC** price from [Nonlogs](https://api.nonlogs.io/api/markets)
-2. **BTC/USD** price from [Kraken](https://api.kraken.com/0/public/Ticker?pair=XXBTZUSD)
+1. Primary: **WOW-BTC** from [Nonlogs](https://api.nonlogs.io/api/markets), converted with
+   **BTC/USD** from [Kraken](https://api.kraken.com/0/public/Ticker?pair=XXBTZUSD).
+2. Fallback: the actively traded **WOW-XMR** market from CexSwap, converted with **XMR/USD** from
+   Kraken. The CexSwap path requires at least `$1` of reported 24-hour USD volume.
 
-The final rate is `WOW-BTC × BTC/USD`. Both values are cached briefly (60s for WOW-BTC, 30s for BTC/USD) to avoid excessive API calls.
+Fresh quotes are cached for 60 seconds. If both providers fail, the API may use the last-known-good
+quote for at most `RATE_STALE_TTL_SECONDS` (default 300); the invoice records a `:stale` source suffix
+and the original quote time. Set the value to `0` to fail closed instead. Every fresh or cached quote
+must be at least `$0.001` per WOW; lower values are rejected and invoice creation fails gracefully.
+Set `RATE_PROVIDER=cexswap` to prefer CexSwap while retaining Nonlogs+Kraken as fallback.
 
 ## Differences from xmrcheckout
 

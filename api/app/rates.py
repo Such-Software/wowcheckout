@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
+import logging
+import os
 import threading
 import time
 from typing import Any
@@ -11,8 +14,14 @@ import requests
 
 NONLOGS_MARKETS_URL = "https://api.nonlogs.io/api/markets"
 KRAKEN_TICKER_URL = "https://api.kraken.com/0/public/Ticker"
-RATE_SOURCE = "nonlogs"
+CEXSWAP_MARKETS_URL = "https://cexswap.cc/api/public/markets/summary"
+RATE_PROVIDER = os.getenv("RATE_PROVIDER", "nonlogs").strip().lower()
 RATE_TTL_SECONDS = 60
+RATE_STALE_TTL_SECONDS = max(0, int(os.getenv("RATE_STALE_TTL_SECONDS", "300")))
+MIN_WOW_USD_RATE = Decimal("0.001")
+CEXSWAP_MIN_VOLUME_USD = Decimal("1")
+
+logger = logging.getLogger(__name__)
 
 _cache_lock = threading.Lock()
 _cached_quote: QuoteResult | None = None
@@ -52,17 +61,7 @@ def _get_btc_usd() -> Decimal:
     return result
 
 
-def get_wow_rate(currency: str) -> QuoteResult:
-    global _cached_quote, _cached_at
-    normalized_currency = currency.strip().lower()
-    if normalized_currency != "usd":
-        raise ValueError(f"Unsupported fiat currency: {currency} (supported: usd)")
-
-    with _cache_lock:
-        if _cached_quote and _cached_at:
-            if time.monotonic() - _cached_at < RATE_TTL_SECONDS:
-                return _cached_quote
-
+def _get_nonlogs_usd() -> Decimal:
     headers = {
         "Accept": "application/json",
         "User-Agent": "wowcheckout/1.0",
@@ -71,22 +70,102 @@ def get_wow_rate(currency: str) -> QuoteResult:
     resp.raise_for_status()
     data: dict[str, Any] = resp.json()
     markets = data.get("markets", {})
-
-    # Use WOW-BTC price converted via Kraken BTC/USD
-    wow_btc = markets.get("WOW-BTC", {})
+    wow_btc = markets.get("WOW-BTC", {}) if isinstance(markets, dict) else {}
     if not wow_btc.get("last_price"):
         raise ValueError("Could not get WOW-BTC rate from Nonlogs")
+    return Decimal(str(wow_btc["last_price"])) * _get_btc_usd()
 
-    btc_usd = _get_btc_usd()
-    rate = Decimal(str(wow_btc["last_price"])) * btc_usd
 
-    quote = QuoteResult(
-        rate=rate,
-        currency="USD",
-        source=RATE_SOURCE,
-        quoted_at=datetime.now(timezone.utc),
+def _get_xmr_usd() -> Decimal:
+    resp = requests.get(KRAKEN_TICKER_URL, params={"pair": "XXMRZUSD"}, timeout=5)
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get("error"):
+        raise RuntimeError(f"Kraken API error: {data['error']}")
+    return Decimal(str(data["result"]["XXMRZUSD"]["c"][0]))
+
+
+def _get_cexswap_usd() -> Decimal:
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": "wowcheckout/1.0",
+    }
+    resp = requests.get(CEXSWAP_MARKETS_URL, headers=headers, timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+    markets = data.get("items", []) if isinstance(data, dict) else data
+    market = next(
+        (
+            item
+            for item in markets
+            if isinstance(item, dict) and str(item.get("pair", "")).upper() == "WOW-XMR"
+        ),
+        None,
     )
+    if not market:
+        raise ValueError("CexSwap did not return the WOW-XMR market")
+    volume_usd = Decimal(str(market.get("volume24h_usd", "0")))
+    if volume_usd < CEXSWAP_MIN_VOLUME_USD:
+        raise ValueError("CexSwap WOW-XMR market has insufficient 24-hour volume")
+    wow_xmr = Decimal(str(market.get("last", "0")))
+    return wow_xmr * _get_xmr_usd()
+
+
+def _providers() -> list[tuple[str, Callable[[], Decimal]]]:
+    providers = [
+        ("nonlogs+kraken", _get_nonlogs_usd),
+        ("cexswap+kraken", _get_cexswap_usd),
+    ]
+    if RATE_PROVIDER == "cexswap":
+        providers.reverse()
+    return providers
+
+
+def get_wow_rate(currency: str) -> QuoteResult:
+    global _cached_quote, _cached_at
+    normalized_currency = currency.strip().lower()
+    if normalized_currency != "usd":
+        raise ValueError(f"Unsupported fiat currency: {currency} (supported: usd)")
+
     with _cache_lock:
-        _cached_quote = quote
-        _cached_at = time.monotonic()
-    return quote
+        if _cached_quote and _cached_at:
+            if (
+                time.monotonic() - _cached_at < RATE_TTL_SECONDS
+                and _cached_quote.rate >= MIN_WOW_USD_RATE
+            ):
+                return _cached_quote
+
+    for source, provider in _providers():
+        try:
+            rate = provider()
+            if rate < MIN_WOW_USD_RATE:
+                raise ValueError(
+                    f"{source} returned Wownero below the ${MIN_WOW_USD_RATE} safety floor"
+                )
+            quote = QuoteResult(
+                rate=rate,
+                currency="USD",
+                source=source,
+                quoted_at=datetime.now(timezone.utc),
+            )
+            with _cache_lock:
+                _cached_quote = quote
+                _cached_at = time.monotonic()
+            return quote
+        except (KeyError, TypeError, ValueError, RuntimeError, requests.RequestException) as error:
+            logger.warning("Wownero rate provider %s failed: %s", source, error)
+
+    with _cache_lock:
+        if _cached_quote and _cached_at and RATE_STALE_TTL_SECONDS > 0:
+            if (
+                time.monotonic() - _cached_at < RATE_STALE_TTL_SECONDS
+                and _cached_quote.rate >= MIN_WOW_USD_RATE
+            ):
+                return QuoteResult(
+                    rate=_cached_quote.rate,
+                    currency=_cached_quote.currency,
+                    source=f"{_cached_quote.source}:stale",
+                    quoted_at=_cached_quote.quoted_at,
+                )
+
+    raise RuntimeError("Wownero rate providers unavailable")
