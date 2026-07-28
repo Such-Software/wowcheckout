@@ -15,7 +15,14 @@ import requests
 NONLOGS_MARKETS_URL = "https://api.nonlogs.io/api/markets"
 KRAKEN_TICKER_URL = "https://api.kraken.com/0/public/Ticker"
 CEXSWAP_MARKETS_URL = "https://cexswap.cc/api/public/markets/summary"
-RATE_PROVIDER = os.getenv("RATE_PROVIDER", "nonlogs").strip().lower()
+# Unified neroswap price Worker: multi-exchange, volume-weighted, excludes a
+# dead source (Nonlogs went down 2026-07 and hard-broke the single-source path).
+UNIFIED_WOW_URL = os.getenv(
+    "UNIFIED_WOW_URL", "https://neroswap-wow-prices.jw-e6d.workers.dev/price/wow"
+)
+# Default to the unified feed; RATE_PROVIDER=nonlogs|cexswap forces a legacy
+# single source first (debugging).
+RATE_PROVIDER = os.getenv("RATE_PROVIDER", "unified").strip().lower()
 RATE_TTL_SECONDS = 60
 RATE_STALE_TTL_SECONDS = max(0, int(os.getenv("RATE_STALE_TTL_SECONDS", "300")))
 MIN_WOW_USD_RATE = Decimal("0.001")
@@ -111,14 +118,31 @@ def _get_cexswap_usd() -> Decimal:
     return wow_xmr * _get_xmr_usd()
 
 
+def _get_unified_usd() -> Decimal:
+    """WOW-USD from the unified neroswap price Worker — multi-exchange,
+    volume-weighted, resilient to a dead source (the primary provider)."""
+    headers = {"Accept": "application/json", "User-Agent": "wowcheckout/1.0"}
+    resp = requests.get(UNIFIED_WOW_URL, headers=headers, timeout=6)
+    resp.raise_for_status()
+    data = resp.json()
+    price = data.get("price_usd")
+    if price is None or Decimal(str(price)) <= 0:
+        # 206 / null = every feed stale; fall through to the direct providers.
+        raise ValueError("unified price API returned no WOW-USD price")
+    return Decimal(str(price))
+
+
 def _providers() -> list[tuple[str, Callable[[], Decimal]]]:
-    providers = [
-        ("nonlogs+kraken", _get_nonlogs_usd),
-        ("cexswap+kraken", _get_cexswap_usd),
-    ]
+    unified = ("unified", _get_unified_usd)
+    nonlogs = ("nonlogs+kraken", _get_nonlogs_usd)
+    cexswap = ("cexswap+kraken", _get_cexswap_usd)
+    # Unified first, with the direct single-source paths as fallbacks. An
+    # operator can force a legacy source first for debugging via RATE_PROVIDER.
+    if RATE_PROVIDER == "nonlogs":
+        return [nonlogs, cexswap, unified]
     if RATE_PROVIDER == "cexswap":
-        providers.reverse()
-    return providers
+        return [cexswap, nonlogs, unified]
+    return [unified, nonlogs, cexswap]
 
 
 def get_wow_rate(currency: str) -> QuoteResult:
