@@ -15,10 +15,11 @@ import requests
 NONLOGS_MARKETS_URL = "https://api.nonlogs.io/api/markets"
 KRAKEN_TICKER_URL = "https://api.kraken.com/0/public/Ticker"
 CEXSWAP_MARKETS_URL = "https://cexswap.cc/api/public/markets/summary"
-# Unified neroswap price Worker: multi-exchange, volume-weighted, excludes a
-# dead source (Nonlogs went down 2026-07 and hard-broke the single-source path).
+# Canonical Such Software price oracle (hash-wallet-prices Worker): Nonlogs +
+# volume-weighted CexSwap, averaged. Replaces the ad-hoc neroswap-wow-prices
+# Worker, which froze on 2026-07-28 and has served price_usd=null since.
 UNIFIED_WOW_URL = os.getenv(
-    "UNIFIED_WOW_URL", "https://neroswap-wow-prices.jw-e6d.workers.dev/price/wow"
+    "UNIFIED_WOW_URL", "https://prices.neroswap.com/v2/rates?base=WOW&quote=USD"
 )
 # Default to the unified feed; RATE_PROVIDER=nonlogs|cexswap forces a legacy
 # single source first (debugging).
@@ -119,15 +120,19 @@ def _get_cexswap_usd() -> Decimal:
 
 
 def _get_unified_usd() -> Decimal:
-    """WOW-USD from the unified neroswap price Worker — multi-exchange,
-    volume-weighted, resilient to a dead source (the primary provider)."""
+    """WOW-USD from the canonical oracle at prices.neroswap.com — Nonlogs plus
+    volume-weighted CexSwap, averaged, KV-cached each minute (the primary
+    provider). Accepts the legacy neroswap-wow-prices shape too so the
+    UNIFIED_WOW_URL env override keeps working either way."""
     headers = {"Accept": "application/json", "User-Agent": "wowcheckout/1.0"}
     resp = requests.get(UNIFIED_WOW_URL, headers=headers, timeout=6)
     resp.raise_for_status()
     data = resp.json()
-    price = data.get("price_usd")
+    price = data.get("results", {}).get("WOW_USD") if isinstance(data.get("results"), dict) else None
+    if price is None:
+        price = data.get("price_usd")
     if price is None or Decimal(str(price)) <= 0:
-        # 206 / null = every feed stale; fall through to the direct providers.
+        # null / zero = oracle has nothing; fall through to the direct providers.
         raise ValueError("unified price API returned no WOW-USD price")
     return Decimal(str(price))
 
