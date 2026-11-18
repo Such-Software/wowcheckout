@@ -77,7 +77,7 @@ The file and folder structure is kept identical to xmrcheckout to make upstream 
 - `api/app/rates.py` — Nonlogs WOW-BTC + Kraken BTC/USD instead of Kraken XMR/USD
 - `api/app/subaddress_derivation.py` — Wownero network byte overrides (mainnet=53, subaddress=63, integrated=54)
 - `api/app/qr_codes.py` — `wownero:` URI scheme
-- `docker/monero/Dockerfile` — Downloads Wownero binaries from Codeberg
+- `docker/monero/Dockerfile` — Downloads Wownero binaries from Codeberg and checks their signed SHA-256
 - `docker-compose.yml` — `wownero-wallet-rpc` commands, port 34568, Wownero daemon URL
 
 ## Deployment
